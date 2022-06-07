@@ -2,7 +2,7 @@
 
 <img src="item.png" height="50">
 
-The absolutely underrated meme build tool. This should be a submodule of the [memealchemy](https://github.com/memealchemy/memealchemy) project, but this can be run separately for your own use.
+The absolutely underrated meme build tool. This is a submodule of the [memealchemy](https://github.com/memealchemy/memealchemy) project, but this can be run separately for your own use.
 
 ## Usage
 
