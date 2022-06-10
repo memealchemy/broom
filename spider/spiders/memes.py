@@ -35,6 +35,7 @@ class Utils:
         "With",
         "?",
         ".",
+        "",
         "Are",
         "FINISHED",
     ]
