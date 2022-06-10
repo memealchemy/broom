@@ -137,17 +137,21 @@ class MemeSpider(scrapy.Spider):
 
     def parse_kym_google(self, response):
         try:
-            url = [
-                i
-                for i in response.xpath("//a/@href").getall()
-                if "knowyourmeme.com/memes" in i
-            ][0]
+            url = (
+                [
+                    i
+                    for i in response.xpath("//a/@href").getall()
+                    if "knowyourmeme.com/memes" in i
+                ][0]
+                .split("?q=")[1]
+                .split("&sa")[0]
+            )
 
             yield scrapy.Request(
                 url,
                 callback=self.parse_kym_table,
                 dont_filter=True,
-                meta={"meme": element[1], "youtube_id": response.meta["youtube_id"]},
+                meta={"meme": url, "youtube_id": response.meta["youtube_id"]},
                 headers={"User-Agent": "Mozilla/5.0"},
             )
             time.sleep(1.7)
@@ -193,7 +197,11 @@ class MemeSpider(scrapy.Spider):
             pass
         item["types"] = types
 
-        item["status"] = details[1]
+        try:
+            item["status"] = details[1]
+        except IndexError:
+            item["status"] = "Unknown"
+
         item["origin"] = details[3]
         item["year"] = details[5]
 
@@ -211,8 +219,5 @@ class MemeSpider(scrapy.Spider):
         except IndexError:
             item["other"] = Utils.QUESTION_MARK
 
-        print(item.__dict__)
-
         yield item
         time.sleep(1.7)
-

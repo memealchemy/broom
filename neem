@@ -1,0 +1,57 @@
+#!venv/bin/python3
+
+from sys import exit
+from os.path import exists, basename
+import json
+
+import click
+from rich.console import Console
+
+con = Console()
+
+@click.group
+def cli():
+    """Main CLI group"""
+
+@click.command()
+@click.option('--dump', 'flag', flag_value='dump')
+@click.option('--rm', 'flag', flag_value='rm')
+def incomplete(flag):
+    """Test incomplete values in output.json"""
+    if not exists('output.json'):
+        con.print('[red]No output.json exists. Did you forget to run the spider?[/red]')
+        return exit(1)
+    
+    with open('output.json', encoding='utf-8') as fh:
+        data = json.load(fh)
+    
+    fil = [d['title'] for d in data if d['status'] == 'None']    
+
+    con.print('\n'.join([f'[dim]{f}[/dim]' for f in fil]))
+    con.print(f'\n{len(fil)} memes have incomplete values')
+
+    if flag == 'dump':
+        fil = [d for d in data if d['status'] == 'None']  
+
+        with open('output.fix.json', 'w') as fh:
+            json.dump(fil, fh)
+
+        con.print(
+        '\n[bold]JSON data dumped to output.fix.json.[/bold]\n\n'
+        f'You can now run [code][italic]./{basename(__file__)} crawl revise[/italic][/code]\n'
+        'to scrape whatever memes are in output.fix.json.'
+        )
+    elif flag == 'rm':
+        fil = [d for d in data if d['status'] != 'None'] 
+
+        with open('output.json', 'w') as fh:
+            json.dump(fil, fh)
+    
+        con.print(
+        '\n[bold]Incomplete data removed.[/bold]'
+        )
+        
+
+if __name__ == '__main__':
+    cli.add_command(incomplete)
+    cli()
