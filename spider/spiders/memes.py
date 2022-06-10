@@ -56,7 +56,7 @@ class Utils:
     QUESTION_MARK = "https://image.shutterstock.com/image-illustration/question-mark-symbol-on-isolated-260nw-795811507.jpg"
 
 
-class BaseSpider(scrapy.Spider):
+class MemeSpider(scrapy.Spider):
     name = "memes"
     allowed_domains = ["youtube.com", "google.com", "html.duckduckgo.com"]
     videos = list(
@@ -68,12 +68,6 @@ class BaseSpider(scrapy.Spider):
     ]
 
     def parse(self, response: Request):
-        """
-        Request all YouTube ``oembed`` start URLs,
-        get the title and tokenize it,
-        and search for it with either Google or HTML DuckDuckGo
-        """
-
         string = json.loads(response.text)["title"].replace("“", '"').replace("”", '"')
 
         title = Utils.regex.sub("", string).strip()
@@ -133,7 +127,7 @@ class BaseSpider(scrapy.Spider):
             )
         except Exception:
             yield scrapy.Request(
-                f"https://google.com/search?q={meme}+know+your+meme",
+                f"https://www.google.com/search?q={meme}+knowyourmeme",
                 callback=self.parse_kym_google,
                 headers={"User-Agent": "Mozilla/5.0"},
                 dont_filter=True,
@@ -142,18 +136,14 @@ class BaseSpider(scrapy.Spider):
 
     def parse_kym_google(self, response):
         try:
-            element = [
-                (item.xpath("@href"), item.xpath("//h3/text()").split(" |")[0])
-                for item in response.xpath("//a")
-                if "knowyourmeme.com/memes" in item.xpath("@href")
-                and item.find("cultures") == -1
-            ]
-            print(element)
-
-            element = element[0]
+            url = [
+                i
+                for i in response.xpath("//a/@href").getall()
+                if "knowyourmeme.com/memes" in i
+            ][0]
 
             yield scrapy.Request(
-                element[0],
+                url,
                 callback=self.parse_kym_table,
                 dont_filter=True,
                 meta={"meme": element[1], "youtube_id": response.meta["youtube_id"]},
@@ -225,6 +215,3 @@ class BaseSpider(scrapy.Spider):
         yield item
         time.sleep(1.7)
 
-
-class WaveTwoSpider(BaseSpider):
-    name = "wavetwo"
