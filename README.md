@@ -13,6 +13,6 @@ $ git clone https://github.com/memealchemy/neem
 $ pip install -r requirements.txt
 ```
 
-Neem comes with a powerful CLI to use the spider as well as analyze and export output data.
+Neem comes with a powerful CLI to use the spiders as well as analyze and export output data.
 
 Run `./neem crawl` or `scrapy crawl memes -o output.json` to run the spider. Either command should leave you with an output.json.
