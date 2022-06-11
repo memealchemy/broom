@@ -1,7 +1,6 @@
 from urllib.parse import quote_plus, unquote_plus
 import random
 import time
-import json
 import re
 
 import scrapy
@@ -25,9 +24,7 @@ class MemeSpider(scrapy.Spider):
     ]
 
     def parse(self, response: HtmlResponse):
-        string = (
-            json.loads(response.text)["title"].replace("“", '"').replace("”", '"')
-        )  # type: str
+        string = response.json()["title"].replace("“", '"').replace("”", '"')
 
         title = Utils.regex.sub("", string).strip()
         words = re.findall('"([^"]*)"', string)
