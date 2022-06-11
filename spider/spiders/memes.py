@@ -7,56 +7,13 @@ import re
 import scrapy
 import scrapetube
 from fuzzywuzzy import process
-from scrapy import Request
+from scrapy.http import HtmlResponse
 
 from spider.items import Meme
+from .helpers import Utils, Invalids
 
 
-class Invalids:
-    RESEARCH = [
-        "This submission is currently being researched and evaluated.",
-        "You can help confirm this entry by contributing facts, media, and other evidence of notability and mutation.",
-    ]
-    NOTFOUND = "Page Not Found (404) - Know Your Meme"
-    GALLERY = "Trending Videos Gallery"
-
-
-class Utils:
-    stopwords = [
-        "Why Is",
-        "Why Does",
-        "Everyone",
-        "EVERYONE",
-        "Why",
-        "Is The",
-        "How",
-        "What Are",
-        "What's Up",
-        "With",
-        "?",
-        ".",
-        "Are",
-        "FINISHED",
-    ]
-
-    trails = ("classic", "everywhere", "what")
-
-    def chunkify(l, n):
-        for i in range(0, len(l), n):
-            yield l[i : i + n]
-
-    @classmethod
-    def tokenize(self, text):
-        _list = re.split(
-            r"{}".format("|".join(self.trails)), "".join(text), flags=re.IGNORECASE
-        )
-        return "".join(_list)
-
-    regex = re.compile("|".join(map(re.escape, stopwords)))
-    QUESTION_MARK = "https://image.shutterstock.com/image-illustration/question-mark-symbol-on-isolated-260nw-795811507.jpg"
-
-
-class BaseSpider(scrapy.Spider):
+class MemeSpider(scrapy.Spider):
     name = "memes"
     allowed_domains = ["youtube.com", "google.com", "html.duckduckgo.com"]
     videos = list(
@@ -67,14 +24,10 @@ class BaseSpider(scrapy.Spider):
         for v in videos
     ]
 
-    def parse(self, response: Request):
-        """
-        Request all YouTube ``oembed`` start URLs,
-        get the title and tokenize it,
-        and search for it with either Google or HTML DuckDuckGo
-        """
-
-        string = json.loads(response.text)["title"].replace("“", '"').replace("”", '"')
+    def parse(self, response: HtmlResponse):
+        string = (
+            json.loads(response.text)["title"].replace("“", '"').replace("”", '"')
+        )  # type: str
 
         title = Utils.regex.sub("", string).strip()
         words = re.findall('"([^"]*)"', string)
@@ -95,7 +48,7 @@ class BaseSpider(scrapy.Spider):
             meta={"meme": meme, "youtube_id": response.url.split("?v=")[1]},
         )
 
-    def parse_kym_url(self, response):
+    def parse_kym_url(self, response: HtmlResponse):
         meme = unquote_plus(response.meta["meme"].replace("+", " ").strip().title())
         results = response.xpath(
             '//tbody[@class="entry-grid-body infinite"]//a/text()'
@@ -140,23 +93,26 @@ class BaseSpider(scrapy.Spider):
                 meta={"meme": meme, "youtube_id": response.meta["youtube_id"]},
             )
 
-    def parse_kym_google(self, response):
+    def parse_kym_google(self, response: HtmlResponse):
         try:
-            element = [
-                (item.xpath("@href"), item.xpath("//h3/text()").split(" |")[0])
-                for item in response.xpath("//a")
-                if "knowyourmeme.com/memes" in item.xpath("@href")
-                and item.find("cultures") == -1
-            ]
-            print(element)
-
-            element = element[0]
+            url = (
+                [
+                    url
+                    for url in response.xpath("//a/@href").getall()
+                    if "knowyourmeme.com/memes" in url
+                ][0]
+                .split("?q=")[1]
+                .split("&sa")[0]
+            )
 
             yield scrapy.Request(
-                element[0],
+                url,
                 callback=self.parse_kym_table,
                 dont_filter=True,
-                meta={"meme": element[1], "youtube_id": response.meta["youtube_id"]},
+                meta={
+                    "meme": response.meta["meme"],
+                    "youtube_id": response.meta["youtube_id"],
+                },
                 headers={"User-Agent": "Mozilla/5.0"},
             )
             time.sleep(1.7)
@@ -177,7 +133,7 @@ class BaseSpider(scrapy.Spider):
 
             yield item
 
-    def parse_kym_table(self, response):
+    def parse_kym_table(self, response: HtmlResponse):
         details = response.xpath('//div[@class = "details"]//text()').getall()
 
         while "\n" in details:
@@ -224,7 +180,3 @@ class BaseSpider(scrapy.Spider):
 
         yield item
         time.sleep(1.7)
-
-
-class WaveTwoSpider(BaseSpider):
-    name = "wavetwo"
