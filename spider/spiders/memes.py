@@ -57,10 +57,10 @@ class MemeSpider(scrapy.Spider):
         matches = process.extract(meme, results, limit=len(results))
 
         try:
+            meme = max(matches, key=lambda x: x[-1])[0]
             url = (
                 "https://knowyourmeme.com/memes/"
-                + max(matches, key=lambda x: x[-1])[0]
-                .replace("(", "")
+                + meme.replace("(", "")
                 .replace(")", "")
                 .replace(" ", "-")
                 .replace("/-", "")
@@ -72,15 +72,17 @@ class MemeSpider(scrapy.Spider):
             )
 
             yield scrapy.Request(
-                url,
-                callback=self.parse_kym_table,
+                f"https://google.com/complete/search?client=chrome&q={quote_plus(meme)}",
+                callback=self.parse_acc_google,
                 headers={"User-Agent": "Mozilla/5.0"},
                 dont_filter=True,
                 meta={
-                    "meme": max(matches, key=lambda x: x[-1])[0],
+                    "meme": meme,
+                    "url": url,
                     "youtube_id": response.meta["youtube_id"],
                 },
             )
+            time.sleep(0.5)
         except Exception:
             yield scrapy.Request(
                 f"https://google.com/search?q={meme}+know+your+meme",
@@ -89,6 +91,23 @@ class MemeSpider(scrapy.Spider):
                 dont_filter=True,
                 meta={"meme": meme, "youtube_id": response.meta["youtube_id"]},
             )
+            time.sleep(0.5)
+
+    def parse_acc_google(self, response: HtmlResponse):
+        keywords = response.json()[1]
+
+        yield scrapy.Request(
+            response.meta["url"],
+            callback=self.parse_kym_table,
+            headers={"User-Agent": "Mozilla/5.0"},
+            dont_filter=True,
+            meta={
+                "meme": response.meta["meme"],
+                "url": response.meta["url"],
+                "keywords": keywords,
+                "youtube_id": response.meta["youtube_id"],
+            },
+        )
 
     def parse_kym_google(self, response: HtmlResponse):
         try:
@@ -147,6 +166,10 @@ class MemeSpider(scrapy.Spider):
         item = Meme()
         item["title"] = response.meta["meme"]
         item["youtube_id"] = response.meta["youtube_id"]
+        try:
+            item["keywords"] = response.meta["keywords"]
+        except KeyError:
+            item["keywords"] = "None"
 
         types = "None"
         try:
