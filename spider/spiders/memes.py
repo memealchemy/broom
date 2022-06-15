@@ -15,13 +15,17 @@ from .helpers import Utils, Invalids
 class MemeSpider(scrapy.Spider):
     name = "memes"
     allowed_domains = ["youtube.com", "google.com", "html.duckduckgo.com"]
-    videos = list(
-        scrapetube.get_channel("UCaHT88aobpcvRFEuy4v5Clg", limit=200, sleep=0.2)
-    )
-    start_urls = [
-        "https://youtube.com/oembed?url=https://youtube.com/watch?v=" + v["videoId"]
-        for v in videos
-    ]
+
+    def __init__(self, count=200, **kwargs):
+        videos = list(
+            scrapetube.get_channel("UCaHT88aobpcvRFEuy4v5Clg", limit=count, sleep=0.2)
+        )
+        self.start_urls = [
+            "https://youtube.com/oembed?url=https://youtube.com/watch?v=" + v["videoId"]
+            for v in videos
+        ]
+
+        super().__init__(**kwargs)
 
     def parse(self, response: HtmlResponse):
         string = response.json()["title"].replace("“", '"').replace("”", '"')

@@ -9,6 +9,7 @@ def chunkify(l, n):
     for i in range(0, len(l), n):
         yield l[i : i + n]
 
+
 @click.command()
 def trend():
     """Build trends for existing output"""
